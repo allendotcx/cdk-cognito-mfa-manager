@@ -6,6 +6,8 @@ from aws_cdk import (
     aws_iam as _iam,
     aws_cognito as cognito,
     aws_apigateway as apigateway,
+    aws_s3 as s3,
+    aws_s3_deployment as s3deployment
 )
 
 from constructs import Construct
@@ -176,4 +178,17 @@ class CognitoMfaManagerStack(Stack):
 ####################
 ## Frontend Web UI
 
-## S3 Bucket Static Website
+        webui_pool_client = user_pool.add_client("webui-client",
+            generate_secret = False,
+            auth_flows=cognito.AuthFlow(
+                user_password=True,
+                user_srp=True,
+                admin_user_password=False,
+                custom=False,
+                ),
+            supported_identity_providers = [
+                cognito.UserPoolClientIdentityProvider.COGNITO,
+                ],
+            )
+
+        user_pool_client.apply_removal_policy(CDK_APP_REMOVAL_POLICY)
