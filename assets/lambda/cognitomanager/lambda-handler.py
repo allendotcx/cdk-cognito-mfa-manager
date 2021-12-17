@@ -242,15 +242,10 @@ def action_resetPassword(R):
         return throw_exception(500, description, e)
 
 def action_enableUser(R):
-    description = 'Enable User (reset password and MFA)'
+    description = 'Enable User'
     try:
         R.EnableCognitoUser()
-        (status_code, result) = action_resetUserMfaPassword(R)
-        if( status_code == 200 ):
-            result['message'] = description
-            return 200, result
-        else:
-            return status_code, result
+        return 200, { 'message': description }
     except Exception as e:
         return throw_exception(500, description, e)
 
