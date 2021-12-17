@@ -48,7 +48,7 @@ class CognitoMfaManagerStack(Stack):
                 user_password=True,
                 user_srp=True,
                 admin_user_password=True,
-                custom=True,
+                custom=False,
                 ),
             supported_identity_providers = [
                 cognito.UserPoolClientIdentityProvider.COGNITO,
@@ -67,12 +67,23 @@ class CognitoMfaManagerStack(Stack):
                 'service-role/AWSLambdaBasicExecutionRole'),
             ])
 
-        # grant cognito access.
         lambda_role.add_to_policy(_iam.PolicyStatement(
             effect=_iam.Effect.ALLOW,
-            resources=["*"],
+            resources=[ "*" ],
             actions=[
-                "cognito-idp:*",
+                "cognito-idp:ListUsers",
+                "Cognito-idp:AdminCreateUser",
+                "Cognito-idp:AdminDeleteUser",
+                "cognito-idp:AdminSetUserMFAPreference",
+                "cognito-idp:AdminSetUserPassword",
+                "cognito-idp:AdminGetUser",
+                "cognito-idp:AdminEnableUser",
+                "cognito-idp:AdminDisableUser",
+                "cognito-idp:AdminConfirmSignUp",
+                "cognito-idp:AdminResetUserPassword",
+                "cognito-idp:AdminInitiateAuth",
+                "cognito-idp:AdminRespondToAuthChallenge",
+                "cognito-idp:AdminResetUserSettings",
             ])
         )
 
@@ -111,10 +122,10 @@ class CognitoMfaManagerStack(Stack):
                     'Authorization',
                     'X-Api-Key',
                 ],
-                'allow_methods': ['OPTIONS', 'GET', 'POST', 'PUT', 'PATCH', 'DELETE'],
-                #'allow_methods': ['POST'],
+                #'allow_methods': ['OPTIONS', 'GET', 'POST', 'PUT', 'PATCH', 'DELETE'],
+                'allow_methods': ['POST'],
                 'allow_credentials': True,
-                'allow_origins': apigateway.Cors.ALL_ORIGINS,
+                "allow_origins": ["*"],
                 }
             )
 
@@ -126,17 +137,22 @@ class CognitoMfaManagerStack(Stack):
                 apigateway.IntegrationResponse(
                     status_code = "200",
                     response_parameters = {
-                        "method.response.header.Access-Control-Allow-Origin": "'*'", #apigateway.Cors.ALL_ORIGINS,
+                        "method.response.header.Access-Control-Allow-Origin": "'*'",
                         'method.response.header.Content-Type': "'application/json'",
                 })]
             )
-        # setup end point
-        # auth = apigateway.CognitoUserPoolsAuthorizer(self, "mfaManagerAuthorizer",
-        #     cognito_user_pools=[user_pool]
-        # )
-        # auth.apply_removal_policy(RemovalPolicy.DESTROY)
 
-        manager_resource = manager_api.root.add_resource('mfamanager')
+        # authorizer
+        # cognito_auth = apigateway.CfnAuthorizer(
+        #     self, "mfaManagerAuthorizer",
+        #     name = "mfaManagerAuthorizer",
+        #     rest_api_id = manager_api.rest_api_id,
+        #     type = 'COGNITO_USER_POOLS',
+        #     identity_source='method.request.header.Authorization',
+        #     provider_arns =  [ user_pool.user_pool_arn ],
+        # )
+
+        manager_resource = manager_api.root.add_resource('cognitomanager')
         post_method = manager_resource.add_method(
             "POST",
             manager_integration,
@@ -149,7 +165,8 @@ class CognitoMfaManagerStack(Stack):
                         'method.response.header.Content-Type': True
                     },
                 )],
-            # api_key_required = False,
-            # authorizer = auth,
-            # authorization_type = apigateway.AuthorizationType.COGNITO
         )
+
+        # method_resource = post_method.node.find_child('Resource')
+        # method_resource.add_property_override('AuthorizationType', 'COGNITO_USER_POOLS')
+        # method_resource.add_property_override( 'AuthorizerId', {"Ref": cognito_auth.logical_id})
