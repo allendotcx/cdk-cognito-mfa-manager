@@ -98,7 +98,7 @@ class CognitoMfaManagerStack(Stack):
             self, 'cognito-mfa-manager',
             runtime=_lambda.Runtime.PYTHON_3_7,
             function_name='cognito-mfa-manager',
-            code=_lambda.Code.from_asset('./lambda/cognitomanager'),
+            code=_lambda.Code.from_asset('./assets/lambda/cognitomanager'),
             handler='lambda-handler.handler',
             role=lambda_role,
             environment={
@@ -175,3 +175,5 @@ class CognitoMfaManagerStack(Stack):
 
 ####################
 ## Frontend Web UI
+
+## S3 Bucket Static Website
