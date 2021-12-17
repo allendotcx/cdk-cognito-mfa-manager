@@ -12,11 +12,6 @@ from constructs import Construct
 
 class CognitoMfaManagerStack(Stack):
 
-    # def RandomPassword(self):
-    #     chars = string.ascii_uppercase + string.ascii_lowercase + string.digits + string.punctuation
-    #     size = random.randint(16, 20)
-    #     return 'T3m9' + ''.join(random.choice(chars) for x in range(size))
-
 #####################
 # Cognito UserPool
     def __init__(self, scope: Construct, construct_id: str, **kwargs) -> None:
