@@ -12,18 +12,21 @@ from constructs import Construct
 
 class CognitoMfaManagerStack(Stack):
 
-    def RandomPassword(self):
-        chars = string.ascii_uppercase + string.ascii_lowercase + string.digits + string.punctuation
-        size = random.randint(16, 20)
-        return 'T3m9' + ''.join(random.choice(chars) for x in range(size))
+    # def RandomPassword(self):
+    #     chars = string.ascii_uppercase + string.ascii_lowercase + string.digits + string.punctuation
+    #     size = random.randint(16, 20)
+    #     return 'T3m9' + ''.join(random.choice(chars) for x in range(size))
 
-
+#####################
+# Cognito UserPool
     def __init__(self, scope: Construct, construct_id: str, **kwargs) -> None:
         super().__init__(scope, construct_id, **kwargs)
 
+        CDK_APP_REMOVAL_POLICY = RemovalPolicy.DESTROY
+
         user_pool = cognito.UserPool(self, 'cdk-userpool',
             user_pool_name = 'cognito-demo-01',
-            removal_policy = RemovalPolicy.DESTROY,
+            removal_policy = CDK_APP_REMOVAL_POLICY,
             self_sign_up_enabled = False,
             sign_in_aliases = { 'email': True },
             auto_verify = {'email': True},
@@ -42,6 +45,15 @@ class CognitoMfaManagerStack(Stack):
                 },
             )
 
+        user_pool.add_domain("CognitoDomain",
+            cognito_domain=cognito.CognitoDomainOptions(
+                domain_prefix="acx21mfamanager"
+            )
+        )
+
+###############################
+## Cognito Client: MFA Manager Lambda
+
         user_pool_client = user_pool.add_client("userpool-mfa-manager-client",
             generate_secret = True,
             auth_flows=cognito.AuthFlow(
@@ -55,7 +67,7 @@ class CognitoMfaManagerStack(Stack):
                 ],
             )
 
-        user_pool_client.apply_removal_policy(RemovalPolicy.DESTROY)
+        user_pool_client.apply_removal_policy(CDK_APP_REMOVAL_POLICY)
 
         lambda_role = _iam.Role(scope=self, id='cdk-lambda-role',
             assumed_by =_iam.ServicePrincipal('lambda.amazonaws.com'),
@@ -101,13 +113,7 @@ class CognitoMfaManagerStack(Stack):
                 },
             )
 
-        #
-        # Lambda - Cognito API Gateway
-        # create api
-        # create Authorizer
-        # set the authorizer on the route.
-        #
-
+        # Cognito Manager API Gateway
         manager_api = apigateway.RestApi(self, "cognito-mfa-manager-api",
             rest_api_name = "Cognito MFA Manager API",
             description = "Cognito MFA Manager API.",
@@ -143,7 +149,7 @@ class CognitoMfaManagerStack(Stack):
             )
 
         # authorizer
-        # cognito_auth = apigateway.CfnAuthorizer(
+        #cognito_auth = apigateway.CfnAuthorizer(
         #     self, "mfaManagerAuthorizer",
         #     name = "mfaManagerAuthorizer",
         #     rest_api_id = manager_api.rest_api_id,
@@ -170,3 +176,7 @@ class CognitoMfaManagerStack(Stack):
         # method_resource = post_method.node.find_child('Resource')
         # method_resource.add_property_override('AuthorizationType', 'COGNITO_USER_POOLS')
         # method_resource.add_property_override( 'AuthorizerId', {"Ref": cognito_auth.logical_id})
+
+
+####################
+## Frontend Web UI
