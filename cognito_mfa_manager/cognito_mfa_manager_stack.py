@@ -7,7 +7,8 @@ from aws_cdk import (
     aws_cognito as cognito,
     aws_apigateway as apigateway,
     aws_s3 as s3,
-    aws_s3_deployment as s3deployment
+    aws_s3_deployment as s3deployment,
+    aws_cloudfront as cloudfront,
 )
 
 from constructs import Construct
@@ -142,18 +143,25 @@ class CognitoMfaManagerStack(Stack):
                     response_parameters = {
                         "method.response.header.Access-Control-Allow-Origin": "'*'",
                         'method.response.header.Content-Type': "'application/json'",
-                })]
+                }),
+                apigateway.IntegrationResponse(
+                    status_code = "204",
+                    response_parameters = {
+                        "method.response.header.Access-Control-Allow-Origin": "'*'",
+                        'method.response.header.Content-Type': "'application/json'",
+                }),
+                ]
             )
 
         # authorizer
-        #cognito_auth = apigateway.CfnAuthorizer(
-        #     self, "mfaManagerAuthorizer",
-        #     name = "mfaManagerAuthorizer",
-        #     rest_api_id = manager_api.rest_api_id,
-        #     type = 'COGNITO_USER_POOLS',
-        #     identity_source='method.request.header.Authorization',
-        #     provider_arns =  [ user_pool.user_pool_arn ],
-        # )
+        cognito_auth = apigateway.CfnAuthorizer(
+            self, "mfaManagerAuthorizer",
+            name = "mfaManagerAuthorizer",
+            rest_api_id = manager_api.rest_api_id,
+            type = 'COGNITO_USER_POOLS',
+            identity_source='method.request.header.Authorization',
+            provider_arns =  [ user_pool.user_pool_arn ],
+        )
 
         manager_resource = manager_api.root.add_resource('cognitomanager')
         post_method = manager_resource.add_method(
@@ -165,9 +173,20 @@ class CognitoMfaManagerStack(Stack):
                     response_parameters = {
                         'method.response.header.Access-Control-Allow-Headers': True,
                         'method.response.header.Access-Control-Allow-Origin': True,
-                        'method.response.header.Content-Type': True
+                        'method.response.header.Content-Type': True,
+                        'method.response.header.Access-Control-Allow-Credentials' : True,
                     },
-                )],
+                ),
+                apigateway.MethodResponse(
+                    status_code = "204",
+                    response_parameters = {
+                        'method.response.header.Access-Control-Allow-Headers': True,
+                        'method.response.header.Access-Control-Allow-Origin': True,
+                        'method.response.header.Content-Type': True,
+                        'method.response.header.Access-Control-Allow-Credentials' : True,
+                    },
+                ),
+                ],
         )
 
         # method_resource = post_method.node.find_child('Resource')
@@ -177,6 +196,51 @@ class CognitoMfaManagerStack(Stack):
 
 ####################
 ## Frontend Web UI
+## S3 Bucket Static Website
+
+        # Define S3 Bucket and properties
+        s3bucket = s3.Bucket(self, "cognito-manager-webui-bucket",
+            removal_policy = CDK_APP_REMOVAL_POLICY,
+            website_index_document = "index.html",
+            versioned = False,
+            auto_delete_objects = True,
+            public_read_access = True,
+        )
+
+
+        # result = s3bucket.add_to_resource_policy(_iam.PolicyStatement(
+        #     actions = ["s3:GetObject"],
+        #     effect = _iam.Effect.DENY,
+        #     principals = [ _iam.AnyPrincipal() ],
+        #     resources = [ s3bucket.bucket_arn + "/*"  ],
+        # ))
+
+        ## access logging TODO
+        # s3bucket_policy = s3.BucketPolicy( self, "s3bucket_policy",
+        #     bucket = s3bucket,
+        #     serverAccessLogsBucket = self.createServerAccessLogsBucket(), )
+        # )
+
+        deployment = s3deployment.BucketDeployment(self, "deployStaticWebsite",
+            sources = [s3deployment.Source.asset("./assets/website")],
+            destination_bucket = s3bucket,
+            )
+
+
+        oai = cloudfront.OriginAccessIdentity(self, 'OriginAccessIdentity')
+
+        cf_distribution = cloudfront.CloudFrontWebDistribution(self, "CognitoManagerWebUI",
+            origin_configs=[cloudfront.SourceConfiguration(
+                s3_origin_source=cloudfront.S3OriginConfig(
+                    s3_bucket_source=s3bucket,
+                    origin_access_identity=oai,
+                ),
+                behaviors=[cloudfront.Behavior(
+                    is_default_behavior=True
+                )]
+            )]
+        )
+
 
         webui_pool_client = user_pool.add_client("webui-client",
             generate_secret = False,
@@ -189,6 +253,50 @@ class CognitoMfaManagerStack(Stack):
             supported_identity_providers = [
                 cognito.UserPoolClientIdentityProvider.COGNITO,
                 ],
-            )
 
-        user_pool_client.apply_removal_policy(CDK_APP_REMOVAL_POLICY)
+            o_auth=cognito.OAuthSettings(
+                flows=cognito.OAuthFlows(
+                    authorization_code_grant=True
+                ),
+                scopes=[cognito.OAuthScope.OPENID],
+                #logout_urls=["https://my-app-domain.com/signin"]
+                callback_urls=["https://" + cf_distribution.distribution_domain_name ],
+            )
+        )
+
+        webui_pool_client.apply_removal_policy(CDK_APP_REMOVAL_POLICY)
+
+
+        # authorizer
+        #cognito_auth = apigateway.CfnAuthorizer(
+        #     self, "mfaManagerAuthorizer",
+        #     name = "mfaManagerAuthorizer",
+        #     rest_api_id = manager_api.rest_api_id,
+        #     type = 'COGNITO_USER_POOLS',
+        #     identity_source='method.request.header.Authorization',
+        #     provider_arns =  [ user_pool.user_pool_arn ],
+        # )
+
+
+#
+#
+#
+# // Create an HTTP API
+# const api = new sst.Api(this, "Api", {
+#   // Secure it with IAM Auth
+#   defaultAuthorizationType: sst.ApiAuthorizationType.AWS_IAM,
+#   routes: {
+#     "GET /private": "src/private.handler",
+#     // Make an endpoint public
+#     "GET /public": {
+#       function: "src/public.handler",
+#       authorizationType: sst.ApiAuthorizationType.NONE,
+#     },
+#   },
+
+
+#});
+
+# // Allow authenticated users to invoke the API
+# auth.attachPermissionsForAuthUsers([api]);
+#
