@@ -76,7 +76,7 @@ async function main() {
   //If code not present then request code else request tokens
   if (code == null) { // Create random "state"
 
-    document.getElementById("element").style.display = "none";
+    document.getElementById("cognito_manager_form").style.visibility = "hidden";
 
     var state = getRandomString();
     sessionStorage.setItem("pkce_state", state);
@@ -122,37 +122,33 @@ async function main() {
             }
           });
 
-          document.getElementById("element").style.display = "block";
+          list_users();
+          document.getElementById("cognito_manager_form").style.visibility = "visible";
 
+            // Display tokens
+            document.getElementById("id_token").innerHTML = JSON.stringify(
+              parseJWTPayload(tokens.id_token), null, '\t');
+            document.getElementById("access_token").innerHTML = JSON.stringify(
+              parseJWTPayload(tokens.access_token), null, '\t');
+          });
 
-          //   // Display tokens
-          //   document.getElementById("id_token").innerHTML = JSON.stringify(
-          //     parseJWTPayload(tokens.id_token), null, '\t');
-          //   document.getElementById("access_token").innerHTML = JSON.stringify(
-          //     parseJWTPayload(tokens.access_token), null, '\t');
-          // });
-
-          //
-          //
           // // Fetch from /user_info
-          // await fetch("https://" + domain + ".auth." + region +
-          //   ".amazoncognito.com/oauth2/userInfo", {
-          //     method: 'post',
-          //     headers: {
-          //       'authorization': 'Bearer ' + tokens.access_token
-          //     }
-          //   }).then((response) => {
-          //   return response.json();
-          // }).then((data) => {
-          //   // Display user information
-          //   document.getElementById("userInfo").innerHTML = JSON.stringify(data,
-          //     null, '\t');
-          // });
-          //
-          //
+          await fetch("https://" + domain + ".auth." + region +
+            ".amazoncognito.com/oauth2/userInfo", {
+              method: 'post',
+              headers: {
+                'authorization': 'Bearer ' + tokens.access_token
+              }
+            }).then((response) => {
+            return response.json();
+          }).then((data) => {
+            // Display user information
+            document.getElementById("userInfo").innerHTML = JSON.stringify(data,
+              null, '\t');
+          });
 
 
-        }
+       }
       }
     }
     main();

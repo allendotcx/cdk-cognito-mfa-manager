@@ -329,10 +329,6 @@ def handler(event, context):
     else:
         status_code = 400
         data = { 'message': 'Bad Request - Unrecognised action: ' + action }
-    # disable MFA
-    # enable USER
-    # disable USER
-    # reset PASSWORD
 
     data['action'] = action
     if( status_code == 200 ):
