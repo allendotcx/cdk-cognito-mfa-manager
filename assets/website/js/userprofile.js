@@ -11,7 +11,7 @@ var tokens;
 
 var domain = "acx21mfamanager";
 var region = "eu-west-2";
-var appClientId = "2ra6uk0csjmo2c7kgd40c6ukia";
+var appClientId = "MANUALLY INSERT CLIENT ID";  // This needs to be automated
 var userPoolId = "eu-west-2_7yTTsNciu";
 var redirectURI = window.location.origin + window.location.pathname;
 
@@ -146,8 +146,6 @@ async function main() {
             document.getElementById("userInfo").innerHTML = JSON.stringify(data,
               null, '\t');
           });
-
-
        }
       }
     }

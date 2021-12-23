@@ -154,14 +154,14 @@ class CognitoMfaManagerStack(Stack):
             )
 
         # authorizer
-        cognito_auth = apigateway.CfnAuthorizer(
-            self, "mfaManagerAuthorizer",
-            name = "mfaManagerAuthorizer",
-            rest_api_id = manager_api.rest_api_id,
-            type = 'COGNITO_USER_POOLS',
-            identity_source='method.request.header.Authorization',
-            provider_arns =  [ user_pool.user_pool_arn ],
-        )
+        # cognito_auth = apigateway.CfnAuthorizer(
+        #     self, "mfaManagerAuthorizer",
+        #     name = "mfaManagerAuthorizer",
+        #     rest_api_id = manager_api.rest_api_id,
+        #     type = 'COGNITO_USER_POOLS',
+        #     identity_source='method.request.header.Authorization',
+        #     provider_arns =  [ user_pool.user_pool_arn ],
+        # )
 
         manager_resource = manager_api.root.add_resource('cognitomanager')
         post_method = manager_resource.add_method(
@@ -260,7 +260,7 @@ class CognitoMfaManagerStack(Stack):
                 ),
                 scopes=[cognito.OAuthScope.OPENID],
                 #logout_urls=["https://my-app-domain.com/signin"]
-                callback_urls=["https://" + cf_distribution.distribution_domain_name ],
+                callback_urls=["https://" + cf_distribution.distribution_domain_name + "/" ],
             )
         )
 
